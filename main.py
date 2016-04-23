@@ -1,4 +1,4 @@
-from rw_monitor import *
+from monitors import *
 
 rwm = ReadersWritersMonitor(123)
 rwm.insert(123)
