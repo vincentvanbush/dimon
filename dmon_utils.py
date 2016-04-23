@@ -1,6 +1,7 @@
 class ConditionVar:
-	def __init__(self, var_id):
+	def __init__(self, monitor_id, var_id):
 		self.var_id = var_id
+		self.monitor_id = monitor_id
 
 	def wait(self):
 		# magic
