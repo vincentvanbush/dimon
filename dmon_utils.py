@@ -10,10 +10,17 @@ class ConditionVar:
 		# magic
 		pass
 
+class Monitor:
+	def lock(self):
+		print 'locking', self.id
+
+	def release(self):
+		print 'unlocking', self.id
+
 def monitor_entry(func):
 	def func_wrapper(self, *args, **kwargs):
-		# lock the monitor
+		self.lock()
 		retval = func(self, *args, **kwargs)
-		# unlock the monitor
+		self.release()
 		return retval
 	return func_wrapper
