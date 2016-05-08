@@ -9,23 +9,22 @@ rank = MPI.COMM_WORLD.Get_rank()
 size = MPI.COMM_WORLD.size
 
 if __name__ == '__main__':
+	
 
 	rwm = ReadersWritersMonitor(123)
 
-	if rank < 2: # consumer
+	if rank < 2:
 		print 'Consumer #', rank, 'and I can see', size, 'processes.'
+		i = 0
 		while True:
 			time.sleep(random.random() * 3)
-			logger('attempting to get')
 			x = rwm.get()
-			logger('got', x)
+			print 'Consumer #', rank, 'got', x
 
-	else: # producer
+	else:
 		print 'Producer #', rank, 'and I can see', size, 'processes.'
 		i = 0
 		while True:
 			time.sleep(random.random() * 3)
-			logger('attempting to insert')
-			rwm.insert()
-			logger('inserted')
-			i += 1
+			rwm.insert(i)
+			print 'Producer #', rank, 'inserted', i
