@@ -7,7 +7,7 @@ def logger(*args, **kwargs):
 	if kwargs.get('color'):
 		if kwargs.get('color') == 'green':
 			c = '\033[92m'
-		elif kwargs.get('color') == 'red':
+		elif kwargs.get('color') == 'yellow':
 			c = '\033[93m'
 		else:
 			c = '\033[94m'
@@ -70,6 +70,43 @@ class Monitor:
 			field_state = field_state)
 		reply.send_to(recvmsg.sender)
 
+	def handle_reply(self, recvmsg):
+		if recvmsg.payload.get('request_timestamp') == self._last_request.payload.get('timestamp'):
+			logger('received reply from %d' % recvmsg.sender, color='blue')
+			# logger('receives reply from %d' % recvmsg.sender)
+			if recvmsg.payload.get('monitor_id') == self.id:
+				recvstamp = recvmsg.payload.get('state_stamp')
+				# logger('local state %d' % self._state_stamp, 'received state %d from %d' % (recvstamp, recvmsg.sender))
+				if recvstamp > self._state_stamp:
+					self._state_stamp = recvstamp
+					field_state = recvmsg.payload.get('field_state')
+					for k in field_state:
+						setattr(self, k, field_state[k])
+					logger('updating - payload:', recvmsg.payload)
+					# logger('after update:', self.fields())
+				self._replies_count += 1
+				if self._replies_count >= MPI.COMM_WORLD.size - 1:
+					# logger('has enough replies')
+					self._state = MonitorState.IN_CRITICAL_SECTION
+					self._replies_count = 0
+					if self._lock.locked():
+						self._lock.release()
+
+	def handle_signal(self, recvmsg):
+		if recvmsg.payload.get('var_id') == self._waiting_on.var_id and \
+		   recvmsg.payload.get('monitor_id') == self.id:
+			# logger('received signal', recvmsg.payload)
+			request = Message(
+				MessageType.RA_REQUEST,
+				timestamp = time.time(),
+				monitor_id = self.id,
+				var_id = self._waiting_on.var_id)
+			request.broadcast()
+			self._last_request = request
+			self._replies_count = 0
+			self._lock.release()
+			self._state = MonitorState.WAITING_FOR_REPLIES
+
 	def _listener_routine(self):
 		self._lock.acquire()
 		while True:
@@ -91,45 +128,14 @@ class Monitor:
 					else:
 						self._pending_requests += [recvmsg]
 
-				elif recvmsg.msg_type == MessageType.RA_REPLY and \
-				     recvmsg.payload.get('request_timestamp') == self._last_request.payload.get('timestamp'):
-					logger('received reply from %d' % recvmsg.sender, color='blue')
-					# logger('receives reply from %d' % recvmsg.sender)
-					if recvmsg.payload.get('monitor_id') == self.id:
-						recvstamp = recvmsg.payload.get('state_stamp')
-						# logger('local state %d' % self._state_stamp, 'received state %d from %d' % (recvstamp, recvmsg.sender))
-						if recvstamp > self._state_stamp:
-							self._state_stamp = recvstamp
-							field_state = recvmsg.payload.get('field_state')
-							for k in field_state:
-								setattr(self, k, field_state[k])
-							logger('updating - payload:', recvmsg.payload)
-							# logger('after update:', self.fields())
-						self._replies_count += 1
-						if self._replies_count >= MPI.COMM_WORLD.size - 1:
-							# logger('has enough replies')
-							self._state = MonitorState.IN_CRITICAL_SECTION
-							self._replies_count = 0
-							if self._lock.locked():
-								self._lock.release()
+				elif recvmsg.msg_type == MessageType.RA_REPLY:
+					self.handle_reply(recvmsg)
 
 
 			elif self._state == MonitorState.WAITING_FOR_SIGNAL:
 				
-				if recvmsg.msg_type == MessageType.SIGNAL and \
-				   recvmsg.payload.get('var_id') == self._waiting_on.var_id and \
-				   recvmsg.payload.get('monitor_id') == self.id:
-					# logger('received signal', recvmsg.payload)
-					request = Message(
-						MessageType.RA_REQUEST,
-						timestamp = time.time(),
-						monitor_id = self.id,
-						var_id = self._waiting_on.var_id)
-					request.broadcast()
-					self._last_request = request
-					self._replies_count = 0
-					self._lock.release()
-					self._state = MonitorState.WAITING_FOR_REPLIES
+				if recvmsg.msg_type == MessageType.SIGNAL:
+					self.handle_signal(recvmsg)
 
 				elif recvmsg.msg_type == MessageType.RA_REQUEST:
 					# not in critical section so send reply
@@ -156,7 +162,7 @@ class Monitor:
 		request.broadcast()
 		# logger('acquiring lock (LOCK)')
 		self._lock.acquire()
-		logger('enters critical section, state %d' % self._state_stamp, self.fields(), color='red')
+		logger('enters critical section, state %d' % self._state_stamp, self.fields(), color='yellow')
 
 	# Called after every method decorated with @monitor_entry.
 	def release(self):
