@@ -1,4 +1,5 @@
 from monitors import *
+from dmon_utils import logger
 from mpi4py import MPI
 import sys
 
@@ -7,5 +8,5 @@ if __name__ == '__main__':
 	                           args=['worker.py'],
 	                           maxprocs=4)
 
-	print 'Processes have been spawned'
+	logger('Processes have been spawned')
 	raw_input()
