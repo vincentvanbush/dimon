@@ -22,13 +22,9 @@ class ReadersWritersMonitor(Monitor):
 	# All subclasses of Monitor need to specify the list of
 	# variables that are passed to other processes as
 	# the distributed object's state.
-	def fields(self):
-		return {
-			'_ReadersWritersMonitor__pool': self.__pool,
-			'_ReadersWritersMonitor__inp': self.__inp,
-			'_ReadersWritersMonitor__out': self.__out,
-			'_ReadersWritersMonitor__count': self.__count
-		}
+
+	def shared_vars(self):
+		return ['__pool', '__inp', '__out', '__count']
 
 	# Monitor entries decorated with @monitor_entry are executed
 	# in mutual exclusion.
@@ -44,7 +40,7 @@ class ReadersWritersMonitor(Monitor):
 		self.__pool[self.__inp] = newelem
 		self.__inp = (self.__inp + 1) % MAX
 		self.__count += 1
-		time.sleep(random.random() * 3)
+		time.sleep(random.random() * 2)
 		self.__empty.signal()
 		
 	@monitor_entry
@@ -55,7 +51,6 @@ class ReadersWritersMonitor(Monitor):
 		self.__pool[self.__out] = None
 		self.__out = (self.__out + 1) % MAX
 		self.__count -= 1
-		time.sleep(random.random() * 3)
 		self.__full.signal()
 		return what
 		

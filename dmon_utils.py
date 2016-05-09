@@ -48,6 +48,12 @@ class Monitor:
 		self._replies_count = 0
 		thread.start_new_thread(self._listener_routine, ())
 
+	def fields(self):
+		print 'fields():', self.__class__.__name__
+		actual_class = self.__class__.__name__
+		return { '_' + actual_class + k: getattr(self, '_' + actual_class + k)
+				  for k in self.shared_vars() }
+
 	# Release the critical section
 	def handle_pending_requests(self):
 		self._state_stamp += 1
@@ -57,6 +63,7 @@ class Monitor:
 		self._pending_requests = []
 
 	def send_reply(self, recvmsg):
+		print 'send_reply():', self.__class__.__name__
 		field_state = self.fields()
 		reply = Message(
 			MessageType.RA_REPLY,
