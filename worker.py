@@ -13,7 +13,7 @@ if __name__ == '__main__':
 	rwm = ReadersWritersMonitor(123)
 
 	if rank < 2: # consumer
-		print 'Consumer #', rank, 'and I can see', size, 'processes.'
+		logger('Consumer #', rank, 'and I can see', size, 'processes.')
 		while True:
 			time.sleep(random.random() * 3)
 			logger('attempting to get')
@@ -21,7 +21,7 @@ if __name__ == '__main__':
 			logger('got', x)
 
 	else: # producer
-		print 'Producer #', rank, 'and I can see', size, 'processes.'
+		logger('Producer #', rank, 'and I can see', size, 'processes.')
 		i = 0
 		while True:
 			time.sleep(random.random() * 3)
